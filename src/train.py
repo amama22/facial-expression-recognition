@@ -11,12 +11,13 @@ import utils as utils_mod
 
 ARCHITECTURES = {
     "TinyCNN": models_mod.TinyCNN,
+    "DeeperCNN": models_mod.DeeperCNN,
 }
-
 
 def build_model(config, device):
     arch = ARCHITECTURES[config["arch"]]
-    return arch(num_classes=data_mod.NUM_CLASSES).to(device)
+    kwargs = config.get("model_kwargs", {})
+    return arch(num_classes=data_mod.NUM_CLASSES, **kwargs).to(device)
 
 
 def build_optimizer(model, config):
