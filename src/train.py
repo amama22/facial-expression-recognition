@@ -142,3 +142,11 @@ def run_experiment(config, csv_path, project="fer2013", run_name=None):
         "test_acc": test_acc,
         "test_macro_f1": test_f1
     }
+
+def build_scheduler(optimizer, config):
+    name = config.get("scheduler", "none")
+    if name == "cosine":
+        return torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config["epochs"])
+    if name == "plateau":
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=3)
+    return None
