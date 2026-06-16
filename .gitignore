@@ -1,50 +1,6 @@
-# =====================
-# Python
-# =====================
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-
-# =====================
-# Jupyter / Colab
-# =====================
-.ipynb_checkpoints/
-
-# =====================
-# Kaggle / data
-# =====================
 data/
-datasets/
-*.zip
-*.tar
-*.tar.gz
-*.h5
-
-kaggle.json
-
-# =====================
-# PyTorch models
-# =====================
 *.pth
-*.pt
-checkpoints/
-models/
-
-# =====================
-# Weights & Biases
-# =====================
 wandb/
-
-# =====================
-# Logs
-# =====================
-logs/
-*.log
-
-# =====================
-# IDE / OS
-# =====================
-.vscode/
-.idea/
-.DS_Store
+__pycache__/
+.ipynb_checkpoints/
+kaggle.json
