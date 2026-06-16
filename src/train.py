@@ -1,4 +1,3 @@
-
 import numpy as np
 import torch
 import torch.nn as nn
@@ -15,9 +14,14 @@ ARCHITECTURES = {
     "SmallResNet": models_mod.SmallResNet,
 }
 
+
 def build_model(config, device):
     arch = ARCHITECTURES[config["arch"]]
-    kwargs = config.get("model_kwargs", {})
+    kwargs = dict(config.get("model_kwargs", {}))
+    if "p_drop" in config:
+        kwargs["p_drop"] = config["p_drop"]
+    if config["arch"] == "TinyCNN":
+        kwargs.pop("p_drop", None)
     return arch(num_classes=data_mod.NUM_CLASSES, **kwargs).to(device)
 
 
@@ -28,6 +32,15 @@ def build_optimizer(model, config):
     if config["optimizer"] == "sgd":
         return torch.optim.SGD(model.parameters(), lr=config["lr"], momentum=0.9, weight_decay=wd)
     raise ValueError(f"unknown optimizer: {config['optimizer']}")
+
+
+def build_scheduler(optimizer, config):
+    name = config.get("scheduler", "none")
+    if name == "cosine":
+        return torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config["epochs"])
+    if name == "plateau":
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=3)
+    return None
 
 
 def train_one_epoch(model, loader, device, criterion, optimizer):
@@ -67,7 +80,7 @@ def evaluate(model, loader, device, criterion):
     return loss_sum / total, correct / total, macro_f1, preds, targets
 
 
-def run_experiment(config, csv_path, project="fer2013", run_name=None):
+def _train_core(config, csv_path):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     utils_mod.set_seed(config.get("seed", 42))
 
@@ -89,15 +102,8 @@ def run_experiment(config, csv_path, project="fer2013", run_name=None):
     else:
         criterion = nn.CrossEntropyLoss()
 
-    run = wandb.init(
-        project=project,
-        name=run_name or f"{config['arch']}_lr{config['lr']}_bs{config['batch_size']}",
-        group=config["arch"],
-        config=config,
-        reinit=True,
-    )
-
     best_val_acc, best_state = 0.0, None
+
     for epoch in range(1, config["epochs"] + 1):
         tr_loss, tr_acc = train_one_epoch(model, train_loader, device, criterion, optimizer)
         val_loss, val_acc, val_f1, _, _ = evaluate(model, val_loader, device, criterion)
@@ -117,10 +123,10 @@ def run_experiment(config, csv_path, project="fer2013", run_name=None):
             best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
         if scheduler is not None:
-                if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                    scheduler.step(val_acc)
-                else:
-                    scheduler.step()
+            if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                scheduler.step(val_acc)
+            else:
+                scheduler.step()
 
     if best_state is not None:
         model.load_state_dict(best_state)
@@ -142,18 +148,26 @@ def run_experiment(config, csv_path, project="fer2013", run_name=None):
 
     print(f"\nTEST  acc {test_acc:.3f}  macro_f1 {test_f1:.3f}")
 
+    return {"best_val_acc": best_val_acc, "test_acc": test_acc, "test_macro_f1": test_f1}
+
+
+def run_experiment(config, csv_path, project="fer2013", run_name=None):
+    wandb.init(
+        project=project,
+        name=run_name or f"{config['arch']}_lr{config['lr']}_bs{config['batch_size']}",
+        group=config["arch"],
+        config=config,
+        reinit=True,
+    )
+
+    result = _train_core(config, csv_path)
     wandb.finish()
+    return result
 
-    return {
-        "best_val_acc": best_val_acc,
-        "test_acc": test_acc,
-        "test_macro_f1": test_f1
-    }
 
-def build_scheduler(optimizer, config):
-    name = config.get("scheduler", "none")
-    if name == "cosine":
-        return torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config["epochs"])
-    if name == "plateau":
-        return torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=3)
-    return None
+def sweep_train(csv_path, defaults, project="fer2013"):
+    wandb.init(project=project, group=defaults["arch"], config=defaults)
+    config = dict(wandb.config)
+    result = _train_core(config, csv_path)
+    wandb.finish()
+    return result
