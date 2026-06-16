@@ -12,6 +12,7 @@ import utils as utils_mod
 ARCHITECTURES = {
     "TinyCNN": models_mod.TinyCNN,
     "DeeperCNN": models_mod.DeeperCNN,
+    "SmallResNet": models_mod.SmallResNet,
 }
 
 def build_model(config, device):
