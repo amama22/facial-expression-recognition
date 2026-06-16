@@ -86,23 +86,27 @@ def make_weighted_sampler(labels, num_classes=NUM_CLASSES):
 
 def get_dataloaders(csv_path, batch_size=64, augment=True, num_workers=2,
                     use_weighted_sampler=False):
+
     images, labels, usage = load_fer_arrays(csv_path)
     splits = split_arrays(images, labels, usage)
 
     train_ds = FER2013Dataset(*splits["train"], transform=build_transforms(augment))
-    val_ds   = FER2013Dataset(*splits["val"], transform=build_transforms(False))
-    test_ds  = FER2013Dataset(*splits["test"], transform=build_transforms(False))
+    val_ds   = FER2013Dataset(*splits["val"],   transform=build_transforms(False))
+    test_ds  = FER2013Dataset(*splits["test"],  transform=build_transforms(False))
+
+    common = dict(
+        num_workers=num_workers,
+        pin_memory=True,
+        persistent_workers=num_workers > 0
+    )
 
     if use_weighted_sampler:
         sampler = make_weighted_sampler(splits["train"][1])
-        train_loader = DataLoader(train_ds, batch_size=batch_size, sampler=sampler,
-                                  num_workers=num_workers, pin_memory=True)
+        train_loader = DataLoader(train_ds, batch_size=batch_size, sampler=sampler, **common)
     else:
-        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,
-                                  num_workers=num_workers, pin_memory=True)
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, **common)
 
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False,
-                            num_workers=num_workers, pin_memory=True)
-    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False,
-                             num_workers=num_workers, pin_memory=True)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, **common)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, **common)
+
     return train_loader, val_loader, test_loader
