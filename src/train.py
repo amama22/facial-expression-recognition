@@ -80,6 +80,7 @@ def run_experiment(config, csv_path, project="fer2013", run_name=None):
 
     model = build_model(config, device)
     optimizer = build_optimizer(model, config)
+    scheduler = build_scheduler(optimizer, config)
 
     if config.get("class_weighted_loss", False):
         _, labels, usage = data_mod.load_fer_arrays(csv_path)
@@ -114,6 +115,12 @@ def run_experiment(config, csv_path, project="fer2013", run_name=None):
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+
+        if scheduler is not None:
+                if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    scheduler.step(val_acc)
+                else:
+                    scheduler.step()
 
     if best_state is not None:
         model.load_state_dict(best_state)
