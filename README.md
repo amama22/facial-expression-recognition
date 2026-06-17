@@ -12,15 +12,7 @@ Wandb project: https://wandb.ai/tasomamaladze123-none/fer2013
 Stack: Google Colab (T4 GPU) · Kaggle API (data) · GitHub (code) · Weights & Biases (tracking)
 
 ## Repository Structure
-facial-expression-recognition/
-├── README.md
-├── fer_experiments-1.ipynb
-├── fer_experiments-2.ipynb
-├── src/
-│   ├── data.py
-│   ├── models.py
-│   ├── train.py
-│   └── utils.py
+
 data.py შეიცავს Dataset-ს, transforms-ს, imbalance helper-ებს და DataLoader-ებს.
 models.py შეიცავს TinyCNN, DeeperCNN და SmallResNet მოდელებს.
 train.py პასუხისმგებელია training loop-ზე, Wandb logging-ზე, LR scheduler-ზე და sweep-ებზე.
